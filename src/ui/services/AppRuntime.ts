@@ -59,6 +59,12 @@ export interface AppRuntime {
   readonly persistence: PersistenceCoordinator;
   readonly achievements: AchievementRepository;
   readonly achievementSubscriber: AchievementSubscriber;
+  /**
+   * Підписка лише на ФАКТИЧНО нові розблокування. Хук UI
+   * (`useAchievementsUnlock`) використовує її, щоб не показувати тост
+   * на старі досягнення при кожному «game:ended».
+   */
+  onAchievementsUnlocked(listener: AchievementUnlockedListener): () => void;
   readonly disposers: Array<() => void>;
   dispose(): void;
 }
@@ -110,6 +116,23 @@ export function createAppRuntime(options: AppRuntimeOptions = {}): AppRuntime {
   persistence.start();
 
   const achievements = new AchievementRepository(storage.adapter);
+  // Внутрішній «фан-аут»: один колбек у `AchievementSubscriber` —
+  // багато підписників на стороні UI. Це дозволяє хукам читати лише
+  // ФАКТИЧНО нові розблокування, а не весь історичний список.
+  const unlockListeners = new Set<AchievementUnlockedListener>();
+  const fanOut: AchievementUnlockedListener = (entries) => {
+    if (options.onAchievementsUnlocked) {
+      options.onAchievementsUnlocked(entries);
+    }
+    for (const listener of unlockListeners) {
+      try {
+        listener(entries);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("[AppRuntime] achievement listener threw", error);
+      }
+    }
+  };
   const achievementSubscriber = new AchievementSubscriber(
     bus,
     new AchievementEvaluator(),
@@ -117,7 +140,7 @@ export function createAppRuntime(options: AppRuntimeOptions = {}): AppRuntime {
     storage.matches,
     settings.humanName,
     () => Date.now(),
-    options.onAchievementsUnlocked,
+    fanOut,
   );
   const stopAchievementSubscriber = achievementSubscriber.start();
   achievementSubscriber.bootstrap();
@@ -150,6 +173,12 @@ export function createAppRuntime(options: AppRuntimeOptions = {}): AppRuntime {
     persistence,
     achievements,
     achievementSubscriber,
+    onAchievementsUnlocked(listener: AchievementUnlockedListener): () => void {
+      unlockListeners.add(listener);
+      return () => {
+        unlockListeners.delete(listener);
+      };
+    },
     disposers,
     dispose(): void {
       for (const off of [...disposers].reverse()) {

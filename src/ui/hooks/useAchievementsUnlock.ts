@@ -13,8 +13,10 @@ export interface UnlockNotice {
 }
 
 /**
- * Хук, який підписується на колбек розблокування та повертає
- * останнє повідомлення (або `null`, якщо нових немає).
+ * Хук, який підписується на повідомлення про ФАКТИЧНО нові
+ * розблокування (через `runtime.onAchievementsUnlocked`). Старі
+ * досягнення не показуємо повторно — це раніше призводило до
+ * «фантомних» тостів після кожної завершеної партії.
  *
  * Виклик `dismiss()` обнуляє повідомлення, дозволяючи UI закрити
  * банер, не перезавантажуючи сторінку.
@@ -27,17 +29,9 @@ export function useAchievementsUnlock(): {
   const [notice, setNotice] = useState<UnlockNotice | null>(null);
 
   useEffect(() => {
-    return runtime.bus.on("game:ended", () => {
-      // Свіжий стан читаємо одразу після того, як підписник
-      // досягнень обробить подію — для цього використовуємо
-      // мікротаску, аби гарантовано перебігти за нашим порядком
-      // підписників.
-      Promise.resolve().then(() => {
-        const list = runtime.achievements.list();
-        if (list.length === 0) return;
-        const last = list[list.length - 1];
-        setNotice({ entries: [last], seenAt: Date.now() });
-      });
+    return runtime.onAchievementsUnlocked((entries) => {
+      if (entries.length === 0) return;
+      setNotice({ entries: [...entries], seenAt: Date.now() });
     });
   }, [runtime]);
 

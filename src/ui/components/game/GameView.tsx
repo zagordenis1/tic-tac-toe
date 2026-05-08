@@ -63,6 +63,7 @@ export function GameView({ onRequestNewGame }: GameViewProps): JSX.Element {
       });
     return () => {
       token.aborted = true;
+      setAiThinking(false);
     };
   }, [game, service, runtime, settings.aiDifficulty]);
 
