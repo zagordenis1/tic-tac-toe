@@ -10,10 +10,17 @@ import type { PlayerSymbol } from "../types/Symbol";
  * створили й автозбереження її зловило), без цього поля ми б не знали,
  * хто ходить першим, і скидали б до «X». Тепер відновлення поважає
  * оригінальну конфігурацію `GameConfig.firstSymbol`.
+ *
+ * `startedAt` зберігаємо так само явно: без нього `Game.start` під час
+ * відновлення взяв би `Date.now()`, і всі попередні `madeAt`-таймстемпи
+ * опинилися б у «майбутньому» відносно старту партії. Це руйнувало
+ * `elapsedMs()`, тривалість у `MatchRecord` та інваріант
+ * `madeAt >= startedAt`.
  */
 export interface SaveSlot {
   readonly slotName: string;
   readonly savedAt: number;
+  readonly startedAt: number;
   readonly boardSize: number;
   readonly winLength: number;
   readonly firstSymbol: PlayerSymbol;

@@ -17,6 +17,7 @@ export class SaveSlotMapper {
     return {
       slotName,
       savedAt: Date.now(),
+      startedAt: game.getStartedAt(),
       boardSize: game.getBoard().size,
       winLength: game.getWinLength(),
       firstSymbol: game.firstSymbol(),
@@ -49,6 +50,7 @@ export class SaveSlotMapper {
       boardSize: slot.boardSize,
       winLength: slot.winLength,
       firstSymbol: slot.firstSymbol,
+      startedAt: slot.startedAt,
       playerX,
       playerO,
     });

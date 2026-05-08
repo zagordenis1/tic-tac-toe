@@ -68,15 +68,28 @@ export class SaveSlotRepository {
     // записані — беремо символ першого ходу, інакше «X» (поведінка
     // до фіксу). Так не доведеться скидати збереження користувачеві,
     // якщо він оновив білд після додавання поля.
+    let normalized: SaveSlot;
     if (typeof candidate.firstSymbol !== "string") {
       const inferred =
         candidate.moves.length > 0 ? candidate.moves[0]?.symbol : "X";
       if (inferred !== "X" && inferred !== "O") return null;
-      return { ...(candidate as SaveSlot), firstSymbol: inferred };
-    }
-    if (candidate.firstSymbol !== "X" && candidate.firstSymbol !== "O") {
+      normalized = { ...(candidate as SaveSlot), firstSymbol: inferred };
+    } else if (candidate.firstSymbol !== "X" && candidate.firstSymbol !== "O") {
       return null;
+    } else {
+      normalized = candidate as SaveSlot;
     }
-    return candidate as SaveSlot;
+    // Зворотна сумісність зі слотами без `startedAt`: якщо є хоч
+    // один хід — беремо `madeAt` найпершого, інакше падаємо на
+    // `savedAt`. Це краще за `Date.now()`, бо хоча б монотонно
+    // менше за `madeAt`-таймстемпи у слоті.
+    if (typeof normalized.startedAt !== "number") {
+      const fallback =
+        normalized.moves.length > 0
+          ? (normalized.moves[0]?.madeAt ?? normalized.savedAt)
+          : normalized.savedAt;
+      return { ...normalized, startedAt: fallback };
+    }
+    return normalized;
   }
 }

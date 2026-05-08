@@ -7,17 +7,23 @@ import { buildMatchId, type MatchParticipant, type MatchRecord } from "../Match"
  * лягти в історію партій, без зайвих знань про сам Game.
  */
 export class MatchRecordMapper {
-  private static suffixCounter = 0;
-
   /**
    * Будує запис партії з `Game`. Обовʼязково передавайте завершену
    * партію (`game.isOver() === true`); метод фіксує час завершення
    * саме на момент виклику, якщо `finishedAt` не виставлено.
+   *
+   * ID складається лише зі стабільних властивостей завершеної партії
+   * (`startedAt`, `finishedAt`, кількість ходів). Тому redo фінального
+   * ходу, який повторно тригерить `game:ended`, не створить дубль —
+   * `MatchRepository.save` ідемпотентно зливає однаковий ID.
    */
   public toRecord(game: Game): MatchRecord {
     const playedAt = game.getStartedAt();
     const finishedAt = game.getFinishedAt() ?? Date.now();
-    const id = buildMatchId(playedAt, MatchRecordMapper.nextSuffix());
+    const id = buildMatchId(
+      playedAt,
+      MatchRecordMapper.deterministicSuffix(finishedAt, game.getMoves().length),
+    );
     return {
       id,
       playedAt,
@@ -46,11 +52,11 @@ export class MatchRecordMapper {
   }
 
   /**
-   * Постфікс додає унікальності записам, зробленим за одну й ту ж
-   * мілісекунду (рідко, але реально, наприклад у тестах).
+   * Детермінований постфікс із моменту завершення та кількості ходів.
+   * Дві однакові партії за `startedAt` + `finishedAt` + кількість ходів
+   * матимуть один і той самий ID — це і є умова дедуплікації.
    */
-  private static nextSuffix(): string {
-    MatchRecordMapper.suffixCounter += 1;
-    return MatchRecordMapper.suffixCounter.toString(36);
+  private static deterministicSuffix(finishedAt: number, moveCount: number): string {
+    return `${finishedAt.toString(36)}-${moveCount.toString(36)}`;
   }
 }

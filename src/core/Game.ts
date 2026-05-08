@@ -52,6 +52,10 @@ export class Game {
 
   /**
    * Стартова партія: пуста дошка, історія порожня, статус «триває».
+   *
+   * Опційний `startedAt` потрібен для відновлення гри з `SaveSlot`/
+   * `MatchRecord`: інакше тривалість партії та інваріант
+   * `move.madeAt >= startedAt` ламаються після round-trip.
    */
   public static start(input: {
     boardSize: number;
@@ -59,6 +63,7 @@ export class Game {
     firstSymbol: PlayerSymbol;
     playerX: Player;
     playerO: Player;
+    startedAt?: number;
   }): Game {
     const board = Board.empty(input.boardSize);
     return new Game({
@@ -69,7 +74,7 @@ export class Game {
       playerX: input.playerX,
       playerO: input.playerO,
       status: GameStatuses.inProgress(),
-      startedAt: Date.now(),
+      startedAt: input.startedAt ?? Date.now(),
       finishedAt: null,
     });
   }
