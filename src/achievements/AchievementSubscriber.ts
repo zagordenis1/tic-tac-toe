@@ -73,7 +73,15 @@ export class AchievementSubscriber {
 
   private handleGameEnded(game: Game): void {
     const record = new MatchRecordMapper().toRecord(game);
-    const allMatches = [...this.matches.listAll(), record];
+    // Якщо `PersistenceCoordinator` уже встиг записати цей матч у
+    // репозиторій (порядок підписок на `EventBus` не гарантовано),
+    // фільтруємо дубль за стабільним `id`. Без цього `StatsCalculator`
+    // зарахує одну й ту ж партію двічі — і досягнення на серії
+    // (наприклад, `streak-seven`) спрацюють раніше реальних 7 перемог.
+    const existing = this.matches
+      .listAll()
+      .filter((match) => match.id !== record.id);
+    const allMatches = [...existing, record];
     const ids = this.evaluateAgainstHistory(allMatches, record);
     this.persistUnlocks(ids);
   }

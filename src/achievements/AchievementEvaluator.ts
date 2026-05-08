@@ -1,5 +1,6 @@
 import type { MatchRecord } from "../persistence/Match";
 import type { PlayerStats } from "../stats/PlayerStats";
+import { StatsCalculator } from "../stats/StatsCalculator";
 import { isDraw, isWin } from "../types/GameStatus";
 import {
   type Achievement,
@@ -51,23 +52,26 @@ export class AchievementEvaluator {
 
   /**
    * Перетворює `MatchRecord` (точка зору учасника) на коротке резюме
-   * для правил. Повертає null, якщо учасник з символом `playerSymbol`
+   * для правил. Повертає null, якщо учасник з ключем `playerKey`
    * не брав участі в матчі — для безпеки.
+   *
+   * Ключі учасників обчислюються через `StatsCalculator.keyFor`, аби
+   * формат збігався з тим, що використовує `StatsCalculator.computeMap`.
+   * Інакше для AI без `difficulty` ключі розходяться (`ai:unknown` vs
+   * `ai:<name>`), і метод повертав би `null` навіть для коректного
+   * учасника.
    */
   public static buildSummary(
     match: MatchRecord,
     playerKey: string,
   ): AchievementMatchSummary | null {
-    const xKey = `${match.playerX.type}:${match.playerX.difficulty ?? match.playerX.name}`;
-    const oKey = `${match.playerO.type}:${match.playerO.difficulty ?? match.playerO.name}`;
+    const xKey = StatsCalculator.keyFor(match.playerX);
+    const oKey = StatsCalculator.keyFor(match.playerO);
 
     let perspective: "X" | "O" | null = null;
-    if (xKey === playerKey || `human:${match.playerX.name}` === playerKey) {
+    if (xKey === playerKey) {
       perspective = "X";
-    } else if (
-      oKey === playerKey ||
-      `human:${match.playerO.name}` === playerKey
-    ) {
+    } else if (oKey === playerKey) {
       perspective = "O";
     }
     if (perspective === null) return null;
