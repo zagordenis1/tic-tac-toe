@@ -40,23 +40,24 @@ export class CommandHistory<S> {
   }
 
   /**
-   * Скасовує останню оборотну команду й повертає попередній стан.
-   * Якщо історія порожня — кидає помилку.
+   * Скасовує останню команду й повертає попередній стан. Якщо на
+   * вершині стеку — необоротна команда, undo заборонено: вона
+   * виступає «барʼєром», за який ми не можемо повернутися без втрати
+   * стану. Так само поводять себе більшість редакторів (VSCode,
+   * IntelliJ). Це гарантує, що ми ніколи не «викидаємо» команди й не
+   * розсинхронізовуємо стек з реальною історією.
    */
   public undo(state: S): S {
     ensure(this.canUndo(), "CommandHistory: undo неможливий");
-    let next = state;
-    let popped: Command<S> | undefined;
-    while (this.past.length > 0) {
-      popped = this.past.pop();
-      if (popped === undefined) break;
-      if (popped.reversible) {
-        next = popped.undo(next);
-        this.future.push(popped);
-        return next;
-      }
-    }
-    throw new Error("CommandHistory: всі команди необоротні");
+    const popped = this.past.pop();
+    ensure(popped !== undefined, "CommandHistory: undo: пустий стек");
+    ensure(
+      popped.reversible,
+      "CommandHistory: спроба скасувати необоротну команду",
+    );
+    const next = popped.undo(state);
+    this.future.push(popped);
+    return next;
   }
 
   /**
