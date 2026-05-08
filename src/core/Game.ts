@@ -52,6 +52,10 @@ export class Game {
 
   /**
    * Стартова партія: пуста дошка, історія порожня, статус «триває».
+   *
+   * Опційний `startedAt` потрібен для відновлення гри з `SaveSlot`/
+   * `MatchRecord`: інакше тривалість партії та інваріант
+   * `move.madeAt >= startedAt` ламаються після round-trip.
    */
   public static start(input: {
     boardSize: number;
@@ -59,6 +63,7 @@ export class Game {
     firstSymbol: PlayerSymbol;
     playerX: Player;
     playerO: Player;
+    startedAt?: number;
   }): Game {
     const board = Board.empty(input.boardSize);
     return new Game({
@@ -69,7 +74,7 @@ export class Game {
       playerX: input.playerX,
       playerO: input.playerO,
       status: GameStatuses.inProgress(),
-      startedAt: Date.now(),
+      startedAt: input.startedAt ?? Date.now(),
       finishedAt: null,
     });
   }
@@ -128,13 +133,19 @@ export class Game {
    * Спроба зробити хід поточним гравцем у позицію `position`. Виконує усі
    * перевірки правил та повертає новий екземпляр Game. Якщо хід нелегальний —
    * кидає `ValidationError`.
+   *
+   * Опційний параметр `options.madeAt` дозволяє відтворити гру із збереженого
+   * стану без втрати оригінальних таймстемпів — наприклад, при імпорті
+   * `SaveSlot` чи реплеї `MatchRecord`. Без нього беремо `Date.now()`,
+   * як і раніше.
    */
-  public move(position: Position): Game {
+  public move(position: Position, options?: { madeAt?: number }): Game {
     ensure(!this.isOver(), "Гра вже завершена — нові ходи неможливі");
     const newBoard = this.board.withMove(position, this.currentSymbol);
+    const madeAt = options?.madeAt ?? Date.now();
     const newMoves: Move[] = [
       ...this.moves,
-      makeMove(position, this.currentSymbol),
+      makeMove(position, this.currentSymbol, madeAt),
     ];
     const newStatus = Game.winChecker.evaluate(newBoard, this.winLength);
     const finished = isGameOver(newStatus);
@@ -147,7 +158,7 @@ export class Game {
       playerO: this.playerO,
       status: newStatus,
       startedAt: this.startedAt,
-      finishedAt: finished ? Date.now() : null,
+      finishedAt: finished ? madeAt : null,
     });
   }
 
