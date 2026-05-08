@@ -54,7 +54,13 @@ export function GameProvider({ service, children }: GameProviderProps): JSX.Elem
     const bus = service.getBus();
     const events = ["game:started", "game:moveMade", "game:undo", "game:redo", "game:restarted", "game:ended"] as const;
     const offs = events.map((event) =>
-      bus.on(event, ({ game: nextGame }) => setGame(nextGame)),
+      bus.on(event, ({ game: nextGame }) => {
+        setGame(nextGame);
+        // Будь-яка успішна доменна подія знімає попереднє повідомлення
+        // про відхилений хід — інакше «застаріла» помилка висить
+        // нескінченно (див. GameView, де ми показуємо banner).
+        setLastRejection(null);
+      }),
     );
     const offHistory = bus.on("history:changed", (payload) => {
       setHistory({

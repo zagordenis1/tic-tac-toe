@@ -53,15 +53,6 @@ export function SettingsProvider({
     setSettings(initial);
   }, [initial]);
 
-  const persist = useCallback(
-    (next: UserSettings, prev: UserSettings) => {
-      repository.save(next);
-      setSettings(next);
-      if (onChange) onChange(next, prev);
-    },
-    [repository, onChange],
-  );
-
   const setField = useCallback(
     function set<K extends keyof UserSettings>(key: K, value: UserSettings[K]): void {
       setSettings((prev) => {
@@ -76,13 +67,19 @@ export function SettingsProvider({
 
   const update = useCallback(
     (patch: Partial<UserSettings>) => {
+      // Виконуємо побічні ефекти (запис у репозиторій + onChange)
+      // прямо в `setSettings`-апдейтері, але БЕЗ повторного виклику
+      // `setState`. Раніше тут викликався `persist`, який сам робив
+      // `setSettings(next)`, що породжувало вкладений setState й
+      // попередження React «cannot update a component while rendering».
       setSettings((prev) => {
         const next: UserSettings = { ...prev, ...patch };
-        persist(next, prev);
+        repository.save(next);
+        if (onChange) onChange(next, prev);
         return next;
       });
     },
-    [persist],
+    [repository, onChange],
   );
 
   const reset = useCallback(() => {
