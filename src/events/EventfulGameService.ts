@@ -115,15 +115,17 @@ export class EventfulGameService {
 
   /**
    * Завантажує зовнішній стан (наприклад, після перезавантаження
-   * сторінки). Публікує події «гру почали» або «гру завершено» залежно
-   * від стану.
+   * сторінки). Завжди емітимо `game:started` як full-sync сигнал —
+   * підписники (`MoveCounter`, `HistoryRecorder`) реагують на нього
+   * методом `syncFromGame`, тому всі поля гарантовано актуальні. Якщо
+   * стан відразу фінальний, додатково публікуємо `game:ended`, щоб UI
+   * не довелося повторно перевіряти статус.
    */
   public replaceState(next: Game): void {
     this.inner.replaceState(next);
+    this.bus.emit("game:started", { game: next });
     if (next.isOver()) {
       this.bus.emit("game:ended", { game: next, status: next.getStatus() });
-    } else {
-      this.bus.emit("game:started", { game: next });
     }
     this.emitHistoryChanged();
   }
