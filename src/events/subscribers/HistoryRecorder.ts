@@ -1,3 +1,4 @@
+import type { Game } from "../../core/Game";
 import type { Move } from "../../core/Move";
 import type { GameStatus } from "../../types/GameStatus";
 import type { EventBus, Unsubscribe } from "../EventBus";
@@ -18,7 +19,9 @@ export interface RecordedGame {
 /**
  * Підписник, який слухає шину і збирає статистику поточної партії.
  * Працює лише в межах одного «сеансу» — на `game:restarted` обнулює
- * запис, а не накладається.
+ * запис, а не накладається. На `game:undo`/`game:redo` синхронізує
+ * стан з реальним списком ходів `Game`, інакше у запис потраплять
+ * «фантомні» ходи, яких уже нема на дошці.
  */
 export class HistoryRecorder {
   private moves: Move[] = [];
@@ -33,16 +36,19 @@ export class HistoryRecorder {
       this.moves = [...this.moves, move];
     });
     const offStart = bus.on("game:started", ({ game }) => {
-      this.moves = [...game.getMoves()];
-      this.startedAt = game.getStartedAt();
-      this.finishedAt = null;
-      this.status = game.getStatus();
+      this.syncFromGame(game);
     });
     const offRestart = bus.on("game:restarted", ({ game }) => {
       this.moves = [];
       this.startedAt = game.getStartedAt();
       this.finishedAt = null;
       this.status = game.getStatus();
+    });
+    const offUndo = bus.on("game:undo", ({ game }) => {
+      this.syncFromGame(game);
+    });
+    const offRedo = bus.on("game:redo", ({ game }) => {
+      this.syncFromGame(game);
     });
     const offEnd = bus.on("game:ended", ({ game, status }) => {
       this.finishedAt = game.getFinishedAt();
@@ -52,6 +58,8 @@ export class HistoryRecorder {
       offMove();
       offStart();
       offRestart();
+      offUndo();
+      offRedo();
       offEnd();
     };
   }
@@ -67,5 +75,17 @@ export class HistoryRecorder {
 
   public dispose(): void {
     this.unsubscribe();
+  }
+
+  /**
+   * Синхронізує внутрішній стан із сирим обʼєктом гри. Викликається з
+   * `started`, `undo`, `redo` — тобто з усіх подій, де список ходів
+   * міг змінитися «оптом», а не точково.
+   */
+  private syncFromGame(game: Game): void {
+    this.moves = [...game.getMoves()];
+    this.startedAt = game.getStartedAt();
+    this.finishedAt = game.getFinishedAt();
+    this.status = game.getStatus();
   }
 }
