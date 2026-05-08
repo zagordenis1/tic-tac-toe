@@ -2,6 +2,7 @@ import { JsonRepository } from "../JsonRepository";
 import type { StorageAdapter } from "../StorageAdapter";
 import {
   DEFAULT_USER_SETTINGS,
+  type OpponentType,
   type SupportedLocale,
   type ThemeMode,
   type UserSettings,
@@ -10,6 +11,7 @@ import { ALL_DIFFICULTIES, type Difficulty } from "../../types/Difficulty";
 
 const ALLOWED_THEMES: ReadonlyArray<ThemeMode> = ["system", "light", "dark"];
 const ALLOWED_LOCALES: ReadonlyArray<SupportedLocale> = ["uk", "en"];
+const ALLOWED_OPPONENTS: ReadonlyArray<OpponentType> = ["human", "ai"];
 
 /**
  * Репозиторій налаштувань користувача. Тонка обгортка над
@@ -72,6 +74,16 @@ export class SettingsRepository {
       boardSize: typeof data.boardSize === "number" ? data.boardSize : DEFAULT_USER_SETTINGS.boardSize,
       winLength: typeof data.winLength === "number" ? data.winLength : DEFAULT_USER_SETTINGS.winLength,
       humanSymbol: data.humanSymbol === "O" ? "O" : "X",
+      humanName:
+        typeof data.humanName === "string" && data.humanName.trim().length > 0
+          ? data.humanName.trim()
+          : DEFAULT_USER_SETTINGS.humanName,
+      firstSymbol: data.firstSymbol === "O" ? "O" : "X",
+      opponentType: SettingsRepository.coerceEnum<OpponentType>(
+        data.opponentType,
+        ALLOWED_OPPONENTS,
+        DEFAULT_USER_SETTINGS.opponentType,
+      ),
       aiDifficulty: SettingsRepository.coerceEnum<Difficulty>(
         data.aiDifficulty,
         ALL_DIFFICULTIES,

@@ -10,6 +10,9 @@ export interface UserSettings {
   readonly boardSize: number;
   readonly winLength: number;
   readonly humanSymbol: PlayerSymbol;
+  readonly humanName: string;
+  readonly firstSymbol: PlayerSymbol;
+  readonly opponentType: OpponentType;
   readonly aiDifficulty: Difficulty;
   readonly theme: ThemeMode;
   readonly locale: SupportedLocale;
@@ -20,6 +23,8 @@ export interface UserSettings {
   readonly highlightLastMove: boolean;
   readonly autosave: boolean;
 }
+
+export type OpponentType = "human" | "ai";
 
 export type ThemeMode = "system" | "light" | "dark";
 
@@ -34,6 +39,9 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   boardSize: 3,
   winLength: 3,
   humanSymbol: "X",
+  humanName: "Гравець",
+  firstSymbol: "X",
+  opponentType: "ai",
   aiDifficulty: "hard",
   theme: "system",
   locale: "uk",
