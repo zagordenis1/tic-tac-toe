@@ -33,3 +33,10 @@ coverage/
 # Cache
 .eslintcache
 .cache/
+
+# TypeScript build artifacts (we use tsc --noEmit; keep emitted JS out of repo)
+*.tsbuildinfo
+src/**/*.js
+src/**/*.js.map
+vite.config.js
+vitest.config.js
