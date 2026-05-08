@@ -233,11 +233,10 @@ export class Board {
     symbol: PlayerSymbol,
     positions: ReadonlyArray<Position>,
   ): Board {
-    let board: Board = this;
-    for (const position of positions) {
-      board = board.withMove(position, symbol);
-    }
-    return board;
+    return positions.reduce<Board>(
+      (acc, position) => acc.withMove(position, symbol),
+      this,
+    );
   }
 
   /**
