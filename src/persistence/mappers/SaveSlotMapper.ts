@@ -19,6 +19,7 @@ export class SaveSlotMapper {
       savedAt: Date.now(),
       boardSize: game.getBoard().size,
       winLength: game.getWinLength(),
+      firstSymbol: game.firstSymbol(),
       playerX: SaveSlotMapper.serializePlayer(game.getPlayerX()),
       playerO: SaveSlotMapper.serializePlayer(game.getPlayerO()),
       moves: game.getMoves().map((move) => ({
@@ -35,21 +36,27 @@ export class SaveSlotMapper {
    * `move()` для кожної позиції, тож вся валідація та обчислення
    * статусу спрацьовує природно. Якщо ходи були записані з помилками,
    * метод кине `ValidationError`, і виклик ловиться вище.
+   *
+   * Передаємо оригінальні `madeAt`-таймстемпи через `options`, аби
+   * round-trip `toSlot → fromSlot` не «зсував» час ходів. Першого
+   * символа беремо зі слота безпосередньо — навіть якщо ходи відсутні,
+   * відновлення коректно зберігає, хто мав ходити першим.
    */
   public fromSlot(slot: SaveSlot): Game {
     const playerX = SaveSlotMapper.deserializePlayer(slot.playerX);
     const playerO = SaveSlotMapper.deserializePlayer(slot.playerO);
-    const firstSymbol =
-      slot.moves.length === 0 ? "X" : slot.moves[0].symbol;
     let game = Game.start({
       boardSize: slot.boardSize,
       winLength: slot.winLength,
-      firstSymbol,
+      firstSymbol: slot.firstSymbol,
       playerX,
       playerO,
     });
     for (const move of slot.moves) {
-      game = game.move({ row: move.row, col: move.col });
+      game = game.move(
+        { row: move.row, col: move.col },
+        { madeAt: move.madeAt },
+      );
     }
     return game;
   }

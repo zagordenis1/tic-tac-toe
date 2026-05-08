@@ -64,6 +64,19 @@ export class SaveSlotRepository {
     ) {
       return null;
     }
+    // Зворотна сумісність зі слотами без `firstSymbol`: якщо ходи вже
+    // записані — беремо символ першого ходу, інакше «X» (поведінка
+    // до фіксу). Так не доведеться скидати збереження користувачеві,
+    // якщо він оновив білд після додавання поля.
+    if (typeof candidate.firstSymbol !== "string") {
+      const inferred =
+        candidate.moves.length > 0 ? candidate.moves[0]?.symbol : "X";
+      if (inferred !== "X" && inferred !== "O") return null;
+      return { ...(candidate as SaveSlot), firstSymbol: inferred };
+    }
+    if (candidate.firstSymbol !== "X" && candidate.firstSymbol !== "O") {
+      return null;
+    }
     return candidate as SaveSlot;
   }
 }

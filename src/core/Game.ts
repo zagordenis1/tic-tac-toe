@@ -128,13 +128,19 @@ export class Game {
    * Спроба зробити хід поточним гравцем у позицію `position`. Виконує усі
    * перевірки правил та повертає новий екземпляр Game. Якщо хід нелегальний —
    * кидає `ValidationError`.
+   *
+   * Опційний параметр `options.madeAt` дозволяє відтворити гру із збереженого
+   * стану без втрати оригінальних таймстемпів — наприклад, при імпорті
+   * `SaveSlot` чи реплеї `MatchRecord`. Без нього беремо `Date.now()`,
+   * як і раніше.
    */
-  public move(position: Position): Game {
+  public move(position: Position, options?: { madeAt?: number }): Game {
     ensure(!this.isOver(), "Гра вже завершена — нові ходи неможливі");
     const newBoard = this.board.withMove(position, this.currentSymbol);
+    const madeAt = options?.madeAt ?? Date.now();
     const newMoves: Move[] = [
       ...this.moves,
-      makeMove(position, this.currentSymbol),
+      makeMove(position, this.currentSymbol, madeAt),
     ];
     const newStatus = Game.winChecker.evaluate(newBoard, this.winLength);
     const finished = isGameOver(newStatus);
@@ -147,7 +153,7 @@ export class Game {
       playerO: this.playerO,
       status: newStatus,
       startedAt: this.startedAt,
-      finishedAt: finished ? Date.now() : null,
+      finishedAt: finished ? madeAt : null,
     });
   }
 
