@@ -86,15 +86,20 @@ export class MatchRepository {
 
   /**
    * Імпортує записи з JSON-рядка. Якщо JSON битий — кидає помилку.
+   * Поважає той самий ліміт, що й одиничний `save()`: при імпорті
+   * великого архіву залишаємо лише `limit` останніх записів, аби не
+   * переповнити localStorage.
    */
   public importJson(json: string): number {
     const parsed = JSON.parse(json) as unknown;
     if (!Array.isArray(parsed)) {
       throw new Error("MatchRepository.importJson: очікувався масив записів");
     }
-    const valid = parsed.filter(MatchRepository.isMatchRecord);
-    this.inner.save(valid as MatchRecord[]);
-    return valid.length;
+    const valid = parsed.filter(MatchRepository.isMatchRecord) as MatchRecord[];
+    const trimmed =
+      valid.length > this.limit ? valid.slice(valid.length - this.limit) : valid;
+    this.inner.save(trimmed);
+    return trimmed.length;
   }
 
   public count(): number {

@@ -2,8 +2,14 @@ import { JsonRepository } from "../JsonRepository";
 import type { StorageAdapter } from "../StorageAdapter";
 import {
   DEFAULT_USER_SETTINGS,
+  type SupportedLocale,
+  type ThemeMode,
   type UserSettings,
 } from "../Settings";
+import { ALL_DIFFICULTIES, type Difficulty } from "../../types/Difficulty";
+
+const ALLOWED_THEMES: ReadonlyArray<ThemeMode> = ["system", "light", "dark"];
+const ALLOWED_LOCALES: ReadonlyArray<SupportedLocale> = ["uk", "en"];
 
 /**
  * Репозиторій налаштувань користувача. Тонка обгортка над
@@ -53,7 +59,9 @@ export class SettingsRepository {
 
   /**
    * «Дбайливий» мердж: якщо у запису бракує нового поля, ми вставимо
-   * дефолт; якщо тип неправильний — теж заміняємо на дефолт.
+   * дефолт; якщо тип неправильний або значення поза whitelist
+   * (`aiDifficulty`, `theme`, `locale`) — теж заміняємо на дефолт.
+   * Це захищає UI від «битих» або підроблених записів у localStorage.
    */
   private static merge(raw: unknown): UserSettings {
     if (raw === null || typeof raw !== "object") {
@@ -64,9 +72,21 @@ export class SettingsRepository {
       boardSize: typeof data.boardSize === "number" ? data.boardSize : DEFAULT_USER_SETTINGS.boardSize,
       winLength: typeof data.winLength === "number" ? data.winLength : DEFAULT_USER_SETTINGS.winLength,
       humanSymbol: data.humanSymbol === "O" ? "O" : "X",
-      aiDifficulty: data.aiDifficulty ?? DEFAULT_USER_SETTINGS.aiDifficulty,
-      theme: data.theme ?? DEFAULT_USER_SETTINGS.theme,
-      locale: data.locale ?? DEFAULT_USER_SETTINGS.locale,
+      aiDifficulty: SettingsRepository.coerceEnum<Difficulty>(
+        data.aiDifficulty,
+        ALL_DIFFICULTIES,
+        DEFAULT_USER_SETTINGS.aiDifficulty,
+      ),
+      theme: SettingsRepository.coerceEnum<ThemeMode>(
+        data.theme,
+        ALLOWED_THEMES,
+        DEFAULT_USER_SETTINGS.theme,
+      ),
+      locale: SettingsRepository.coerceEnum<SupportedLocale>(
+        data.locale,
+        ALLOWED_LOCALES,
+        DEFAULT_USER_SETTINGS.locale,
+      ),
       enableSounds:
         typeof data.enableSounds === "boolean"
           ? data.enableSounds
@@ -93,5 +113,18 @@ export class SettingsRepository {
           : DEFAULT_USER_SETTINGS.autosave,
     };
     return result;
+  }
+
+  /**
+   * Узагальнений «привіт» для enum-подібних полів: якщо значення
+   * входить у whitelist допустимих — повертаємо його, інакше дефолт.
+   */
+  private static coerceEnum<T extends string>(
+    value: unknown,
+    allowed: ReadonlyArray<T>,
+    fallback: T,
+  ): T {
+    if (typeof value !== "string") return fallback;
+    return (allowed as ReadonlyArray<string>).includes(value) ? (value as T) : fallback;
   }
 }
