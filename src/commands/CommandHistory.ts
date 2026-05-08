@@ -74,8 +74,15 @@ export class CommandHistory<S> {
     return next;
   }
 
+  /**
+   * `canUndo` симетричний поведінці `undo`: ми відкочуємо лише
+   * вершину стеку. Тому перевіряти треба саме її, а не весь стек —
+   * інакше UI вмикає кнопку, а виклик `undo()` падає на необоротній
+   * команді на вершині.
+   */
   public canUndo(): boolean {
-    return this.past.some((command) => command.reversible);
+    if (this.past.length === 0) return false;
+    return this.past[this.past.length - 1].reversible;
   }
 
   public canRedo(): boolean {
